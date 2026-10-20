@@ -1,0 +1,313 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { Layout, Row, Col, Card, Button, Input, Select, Space, Typography, Form, message, Popconfirm, Tag, Empty, Modal } from 'antd';
+import {
+    ArrowRightOutlined,
+    PlusOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    FolderOpenOutlined,
+    TagOutlined,
+    AppstoreAddOutlined,
+    BulbOutlined,
+    ThunderboltOutlined,
+    SafetyCertificateOutlined
+} from '@ant-design/icons';
+
+const { Header, Content } = Layout;
+const { Title, Text } = Typography;
+
+const API_BASE_URL = 'http://localhost:8080/api';
+
+const CATEGORY_TYPES = {
+    LIGHTING: { label: 'روشنایی', color: '#facc15', icon: <BulbOutlined /> },
+    COOLING: { label: 'سرمایشی/گرمایشی', color: '#3b82f6', icon: <ThunderboltOutlined /> },
+    SECURITY: { label: 'امنیت و سنسور', color: '#10b981', icon: <SafetyCertificateOutlined /> },
+    type1: { label: 'روشنایی', color: '#facc15', icon: <BulbOutlined /> },
+    TYPE1: { label: 'روشنایی', color: '#facc15', icon: <BulbOutlined /> }
+};
+
+const CategoryManager = () => {
+    const navigate = useNavigate();
+    const [form] = Form.useForm();
+    const [editForm] = Form.useForm();
+
+    const [categories, setCategories] = useState([]);
+    const [dbDevices, setDbDevices] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
+
+    const fetchInitialData = async () => {
+        setLoading(true);
+        try {
+            const [categoriesRes, devicesRes] = await Promise.all([
+                axios.get(`${API_BASE_URL}/categories/getAll`),
+                axios.get(`${API_BASE_URL}/devices/getAll`).catch(() => ({ data: [] }))
+            ]);
+
+            const normalizedCategories = (categoriesRes.data || []).map(cat => ({
+                ...cat,
+                devices: cat.devices || []
+            }));
+
+            setCategories(normalizedCategories);
+            setDbDevices(devicesRes.data || []);
+        } catch (error) {
+            console.error("خطا در واکشی اطلاعات:", error);
+            message.error('خطا در بارگذاری اطلاعات از دیتابیس مرکزی');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    const onFinish = async (values) => {
+        try {
+            const categoryPayload = {
+                name: values.name,
+                type: values.type,
+                devices: values.devices ? values.devices.map(id => ({ id })) : []
+            };
+
+            await axios.post(`${API_BASE_URL}/categories`, categoryPayload);
+            message.success('دسته‌بندی جدید با موفقیت در دیتابیس ذخیره شد');
+            form.resetFields();
+            fetchInitialData();
+        } catch (error) {
+            message.error('خطا در ذخیره‌سازی گروه جدید');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await axios.delete(`${API_BASE_URL}/categories/${id}`);
+            message.warning('دسته‌بندی با موفقیت از دیتابیس حذف شد');
+            fetchInitialData();
+        } catch (error) {
+            message.error('خطا در حذف آیتم از دیتابیس');
+        }
+    };
+
+    const openEditModal = (category) => {
+        setEditingCategory(category);
+        editForm.setFieldsValue({
+            name: category.name,
+            type: category.type,
+            devices: category.devices ? category.devices.map(d => d.id) : []
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdate = async (values) => {
+        try {
+            const updatedPayload = {
+                id: editingCategory.id,
+                name: values.name,
+                type: values.type,
+                devices: values.devices ? values.devices.map(id => ({ id })) : []
+            };
+
+            await axios.put(`${API_BASE_URL}/categories/${editingCategory.id}`, updatedPayload);
+            message.success('تغییرات با موفقیت در دیتابیس اعمال شد');
+            setIsEditModalOpen(false);
+            setEditingCategory(null);
+            fetchInitialData();
+        } catch (error) {
+            message.error('خطا در به‌روزرسانی اطلاعات');
+        }
+    };
+
+    // =========================================================
+    // استایل‌های ثابت، تمیز و یکدست وستا با متن تیره کاملاً خوانا
+    // =========================================================
+    const whiteFieldStyle = {
+        backgroundColor: '#ffffff',
+        color: '#0f172a', // رنگ متن تیره و فوق‌العاده خوانا پس از قرار گرفتن داخل اینپوت
+        fontWeight: '500',
+        borderRadius: '8px',
+        borderColor: '#cbd5e1',
+    };
+
+    const dropdownStyle = {
+        backgroundColor: '#151f32', // پس‌زمینه منوی بازشو تیره می‌ماند تا با تم دارک همخوانی داشته باشد
+        border: '1px solid #2e3f61',
+        borderRadius: '8px',
+    };
+
+    return (
+        <Layout style={{ background: 'transparent', padding: '20px' }}>
+            <Header style={{ background: '#151f32', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #1e293b', height: '64px' }}>
+                <Space size="middle">
+                    <Button type="text" icon={<ArrowRightOutlined style={{ color: '#fff' }} />} onClick={() => navigate('/')} style={{ background: '#1e293b', borderRadius: '8px' }} />
+                    <Title level={4} style={{ color: '#fff', margin: 0, fontWeight: 'normal' }}>مدیریت دسته‌بندی‌ها</Title>
+                </Space>
+                <FolderOpenOutlined style={{ color: '#14b8a6', fontSize: '20px' }} />
+            </Header>
+
+            <Content style={{ width: '100%' }}>
+                <Row gutter={[24, 24]}>
+                    {/* فرم تعریف گروه جدید وستا */}
+                    <Col xs={24} lg={10}>
+                        <Card
+                            title={<span style={{ color: '#fff' }}><AppstoreAddOutlined /> تعریف گروه جدید</span>}
+                            style={{ background: '#151f32', border: '1px solid #1e293b', borderRadius: '16px' }}
+                            bodyStyle={{ padding: '24px' }}
+                        >
+                            <Form form={form} layout="vertical" onFinish={onFinish}>
+
+                                {/* فیلد نام دسته‌بندی با بک‌گراند سفید و متن ثابت و خوانا */}
+                                <Form.Item name="name" label={<Text style={{ color: '#94a3b8' }}>نام دسته‌بندی</Text>} rules={[{ required: true, message: 'لطفاً نام را وارد کنید' }]}>
+                                    <Input placeholder="مثلاً: روشنایی پذیرایی" style={{ ...whiteFieldStyle, height: '42px' }} />
+                                </Form.Item>
+
+                                {/* فیلد انتخاب نوع عملکرد یکدست شده با متن تیره خوانا */}
+                                <Form.Item name="type" label={<Text style={{ color: '#94a3b8' }}>نوع عملکرد (تایپ سیستم)</Text>} rules={[{ required: true, message: 'انتخاب نوع الزامی است' }]}>
+                                    <Select
+                                        placeholder="انتخاب نوع..."
+                                        dropdownStyle={dropdownStyle}
+                                        size="large"
+                                        style={{ width: '100%', ...whiteFieldStyle }}
+                                    >
+                                        <Select.Option value="LIGHTING" style={{ backgroundColor: '#151f32', color: '#fff' }}>
+                                            <Space>{CATEGORY_TYPES.LIGHTING.icon} روشنایی</Space>
+                                        </Select.Option>
+                                        <Select.Option value="COOLING" style={{ backgroundColor: '#151f32', color: '#fff' }}>
+                                            <Space>{CATEGORY_TYPES.COOLING.icon} سرمایشی/گرمایشی</Space>
+                                        </Select.Option>
+                                        <Select.Option value="SECURITY" style={{ backgroundColor: '#151f32', color: '#fff' }}>
+                                            <Space>{CATEGORY_TYPES.SECURITY.icon} امنیت و سنسور</Space>
+                                        </Select.Option>
+                                    </Select>
+                                </Form.Item>
+
+                                {/* فیلد تخصیص قطعات کاملاً سفید و هماهنگ */}
+                                <Form.Item name="devices" label={<Text style={{ color: '#94a3b8' }}>تخصیص قطعات به این دسته‌بندی</Text>}>
+                                    <Select
+                                        mode="multiple"
+                                        placeholder="دستگاه‌های مورد نظر را انتخاب کنید..."
+                                        dropdownStyle={dropdownStyle}
+                                        size="large"
+                                        style={{ width: '100%', ...whiteFieldStyle }}
+                                    >
+                                        {dbDevices.map(dev => (
+                                            <Select.Option key={dev.id} value={dev.id} style={{ backgroundColor: '#151f32', color: '#fff' }}>
+                                                <span>{dev.name || `دستگاه کد ${dev.id}`}</span>
+                                            </Select.Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+
+                                <Button type="primary" htmlType="submit" block icon={<PlusOutlined />} style={{ height: '42px', background: '#14b8a6', border: 'none', borderRadius: '8px', marginTop: '10px', fontWeight: 'bold' }}>
+                                    ذخیره در دیتابیس
+                                </Button>
+                            </Form>
+                        </Card>
+                    </Col>
+
+                    {/* لیست رکوردهای برگشتی زنده از دیتابیس */}
+                    <Col xs={24} lg={14}>
+                        <div style={{ marginBottom: '16px' }}>
+                            <Text style={{ color: '#64748b' }}>گروه‌های فعال بارگذاری‌شده از پایگاه داده وستا</Text>
+                        </div>
+
+                        {categories.length === 0 ? (
+                            <div style={{ background: '#151f32', padding: '60px', borderRadius: '16px', border: '1px dashed #1e293b', textAlign: 'center' }}>
+                                <Empty description={<span style={{color:'#64748b'}}>هیچ گروه یا دسته‌بندی در دیتابیس یافت نشد.</span>} />
+                            </div>
+                        ) : (
+                            <Row gutter={[16, 16]}>
+                                {categories.map(cat => {
+                                    const typeInfo = CATEGORY_TYPES[cat.type] || { label: cat.type || 'نامشخص', color: '#64748b', icon: <TagOutlined /> };
+                                    const currentDeviceCount = cat.devices ? cat.devices.length : 0;
+
+                                    return (
+                                        <Col span={24} key={cat.id}>
+                                            <Card style={{ background: '#151f32', border: '1px solid #1e293b', borderRadius: '12px' }} bodyStyle={{ padding: '16px' }}>
+                                                <Row align="middle" justify="space-between">
+                                                    <Col>
+                                                        <Space size="middle">
+                                                            <div style={{ background: `${typeInfo.color}20`, padding: '10px', borderRadius: '10px', display: 'flex' }}>
+                                                                <TagOutlined style={{ color: typeInfo.color, fontSize: '20px' }} />
+                                                            </div>
+                                                            <div>
+                                                                <Title level={5} style={{ color: '#fff', margin: 0, fontWeight: 'normal' }}>{cat.name}</Title>
+                                                                <Tag color="black" style={{ border: `1px solid ${typeInfo.color}`, color: typeInfo.color, marginTop: '5px' }}>
+                                                                    <Space size={4}>{typeInfo.icon} {typeInfo.label}</Space>
+                                                                </Tag>
+                                                            </div>
+                                                        </Space>
+                                                    </Col>
+                                                    <Col style={{ textAlign: 'left' }}>
+                                                        <Space size="large">
+                                                            <div style={{ textAlign: 'center', minWidth: '70px' }}>
+                                                                <Title level={4} style={{ color: '#fff', margin: 0 }}>{currentDeviceCount}</Title>
+                                                                <Text style={{ color: '#64748b', fontSize: '11px' }}>دستگاه متصل</Text>
+                                                            </div>
+                                                            <Space>
+                                                                <Button type="text" icon={<EditOutlined style={{ color: '#3b82f6' }} />} onClick={() => openEditModal(cat)} />
+                                                                <Popconfirm title="آیا از حذف این دسته‌بندی اطمینان دارید؟" onConfirm={() => handleDelete(cat.id)} okText="بله" cancelText="خیر">
+                                                                    <Button type="text" danger icon={<DeleteOutlined />} />
+                                                                </Popconfirm>
+                                                            </Space>
+                                                        </Space>
+                                                    </Col>
+                                                </Row>
+                                            </Card>
+                                        </Col>
+                                    );
+                                })}
+                            </Row>
+                        )}
+                    </Col>
+                </Row>
+            </Content>
+
+            {/* مدال شناور ویرایش جزئیات */}
+            <Modal
+                title={<span style={{ color: '#fff' }}>ویرایش اطلاعات دسته‌بندی</span>}
+                open={isEditModalOpen}
+                onCancel={() => { setIsEditModalOpen(false); setEditingCategory(null); }}
+                footer={null}
+                style={{ direction: 'rtl' }}
+                bodyStyle={{ background: '#151f32' }}
+            >
+                <Form form={editForm} layout="vertical" onFinish={handleUpdate} style={{ marginTop: '20px' }}>
+                    <Form.Item name="name" label={<span style={{ color: '#94a3b8' }}>نام دسته‌بندی</span>} rules={[{ required: true, message: 'نام الزامی است' }]}>
+                        <Input style={{ ...whiteFieldStyle, height: '40px' }} />
+                    </Form.Item>
+
+                    <Form.Item name="type" label={<span style={{ color: '#94a3b8' }}>نوع عملکرد</span>} rules={[{ required: true }]}>
+                        <Select dropdownStyle={dropdownStyle} style={{ width: '100%', ...whiteFieldStyle }}>
+                            <Select.Option value="LIGHTING" style={{ backgroundColor: '#151f32', color: '#fff' }}><span>روشنایی</span></Select.Option>
+                            <Select.Option value="COOLING" style={{ backgroundColor: '#151f32', color: '#fff' }}><span>سرمایشی/گرمایشی</span></Select.Option>
+                            <Select.Option value="SECURITY" style={{ backgroundColor: '#151f32', color: '#fff' }}><span>امنیت و سنسور</span></Select.Option>
+                        </Select>
+                    </Form.Item>
+
+                    <Form.Item name="devices" label={<span style={{ color: '#94a3b8' }}>تخصیص قطعات</span>}>
+                        <Select mode="multiple" placeholder="دستگاه‌ها را انتخاب کنید" dropdownStyle={dropdownStyle} style={{ width: '100%', ...whiteFieldStyle }}>
+                            {dbDevices.map(dev => (
+                                <Select.Option key={dev.id} value={dev.id} style={{ backgroundColor: '#151f32', color: '#fff' }}>
+                                    <span>{dev.name}</span>
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+
+                    <Form.Item style={{ textAlign: 'left', marginBottom: 0, marginTop: '20px' }}>
+                        <Button type="primary" htmlType="submit" style={{ background: '#10b981', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>
+                            ثبت تغییرات در دیتابیس
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </Layout>
+    );
+};
+
+export default CategoryManager;
