@@ -48,6 +48,13 @@ function Dashboard() {
             path: '/commands'
         },
         {
+            title: 'مدیریت کاربران',
+            desc: 'مشاهده و ویرایش پروفایل کاربران',
+            icon: <UserOutlined style={{ fontSize: '28px', color: '#8b5cf6' }} />,
+            bgIcon: 'rgba(139, 92, 246, 0.15)',
+            path: '/users'
+        },
+        {
             title: 'امنیت',
             desc: 'مدیریت دسترسی کاربران',
             icon: <SafetyOutlined style={{ fontSize: '28px', color: '#8b5cf6' }} />,

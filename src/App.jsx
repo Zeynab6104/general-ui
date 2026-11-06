@@ -4,6 +4,7 @@ import Dashboard from './Dashboard';
 import DeviceManager from './DeviceManager';
 import CategoryManager from './CategoryManager';
 import LocationManager from './LocationManager';
+import UserManager from './UserManager';
 /*import CommandManager from './CommandManager';*/
 
 
@@ -17,6 +18,7 @@ function App() {
                     <Route path="/devices" element={<DeviceManager />} />
                     <Route path="/categories" element={<CategoryManager />} />
                     <Route path="/locations" element={<LocationManager />} />
+                    <Route path="/users" element={<UserManager />} />
                     {/* <Route path="/commands" element={<CommandManager />} />
                     <Route path="/categories" element={<CategoryManager />} />*/}
                 </Routes>
